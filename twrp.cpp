@@ -447,6 +447,9 @@ int main(int argc, char **argv) {
 	// Load up all the resources
 	gui_loadResources();
 
+	if (DataManager::GetIntValue(TW_PREVENT_AUTO_INSTALL_STOCK_REC_VAR))
+	PartitionManager.Prevent_Install_Stock_Rec(true);
+
 	std::string value;
 	static char charging = ' ';
 	static int lastVal = -1;
