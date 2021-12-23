@@ -212,6 +212,7 @@ GUIAction::GUIAction(xml_node<>* node)
 		ADD_ACTION(enableadb);
 		ADD_ACTION(enablefastboot);
 		ADD_ACTION(unmapsuperdevices);
+		ADD_ACTION(preCustomFlashzip);
 
 		// remember actions that run in the caller thread
 		for (mapFunc::const_iterator it = mf.begin(); it != mf.end(); ++it)
@@ -252,6 +253,7 @@ GUIAction::GUIAction(xml_node<>* node)
 		ADD_ACTION(change_root);
 		ADD_ACTION(change_terminal);
 		ADD_ACTION(mergesnapshots);
+		ADD_ACTION(customFlashzip);
 	}
 
 	// First, get the action
@@ -2664,6 +2666,26 @@ int GUIAction::mergesnapshots(string arg __unused) {
 	if (PartitionManager.Check_Pending_Merges()) {
 		op_status = 0;
 	}
+	operation_end(op_status);
+	return 0;
+}
+
+int GUIAction::preCustomFlashzip(string arg __unused)
+{
+	std::string customZipVerName;
+	TWFunc::read_file(DataManager::GetStrValue("tw_customZipVerPath"), customZipVerName);
+	DataManager::SetValue("tw_text1", Msg("custom_install_confirm=Install {1}")(customZipVerName));
+	DataManager::SetValue("tw_action_text1", Msg("custom_installing=Installing {1}...")(customZipVerName));
+	DataManager::SetValue("tw_complete_text1", Msg("custom_installing_complete=Installed {1}")(customZipVerName));
+	return 0;
+}
+
+int GUIAction::customFlashzip(string arg __unused)
+{
+	int op_status = 1, wipe_cache = 0;
+	operation_start("Custom Flashzip");
+	string zipPath = DataManager::GetStrValue("tw_customZipPath");
+	op_status = flash_zip(zipPath, &wipe_cache);
 	operation_end(op_status);
 	return 0;
 }

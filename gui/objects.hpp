@@ -336,6 +336,7 @@ protected:
 	int setbrightness(std::string arg);
 	int checkforapp(std::string arg);
 	int unmapsuperdevices(std::string arg);
+	int preCustomFlashzip(std::string arg);
 
 	// (originally) threaded actions
 	int fileexists(std::string arg);
@@ -389,6 +390,7 @@ protected:
 	int enableadb(std::string arg);
 	int enablefastboot(std::string arg);
 	int mergesnapshots(std::string arg);
+	int customFlashzip(std::string arg);
 	int simulate;
 };
 
