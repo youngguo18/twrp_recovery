@@ -27,6 +27,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <fstream>
+#ifdef USE_QTI_AIDL_HAPTICS_FIX_OFF
+#include <thread>
+#endif
 
 #ifdef USE_QTI_HAPTICS
 #include <android/hardware/vibrator/1.2/IVibrator.h>
@@ -36,7 +39,14 @@
 #include <aidl/android/hardware/vibrator/IVibrator.h>
 #include <android/binder_manager.h>
 using ::aidl::android::hardware::vibrator::IVibrator;
+#ifdef USE_QTI_AIDL_HAPTICS_FQNAME
+static const std::string kVibratorInstance = std::string("android.hardware.vibrator.") + USE_QTI_AIDL_HAPTICS_FQNAME;
+#else
 static const std::string kVibratorInstance = std::string(IVibrator::descriptor) + "/default";
+#endif
+#ifdef USE_QTI_AIDL_HAPTICS_FIX_OFF
+static std::atomic_int vib_on_count = 0;
+#endif
 #endif
 
 #include "common.h"
@@ -150,7 +160,18 @@ int vibrate(int timeout_ms)
 #elif defined(USE_QTI_AIDL_HAPTICS)
     std::shared_ptr<IVibrator> vib = IVibrator::fromBinder(ndk::SpAIBinder(AServiceManager_getService(kVibratorInstance.c_str())));
     if (vib != nullptr) {
+#ifdef USE_QTI_AIDL_HAPTICS_FIX_OFF
+        std::thread([vib, timeout_ms] {
+            if (vib->on((uint32_t)timeout_ms, nullptr).isOk()) {
+                vib_on_count++;
+                usleep(timeout_ms * 1000);
+                vib_on_count--;
+                if (!vib_on_count) vib->off();
+            }
+        }).detach();
+#else
         vib->on((uint32_t)timeout_ms, nullptr);
+#endif
     }
 #elif defined(USE_SAMSUNG_HAPTICS)
     /* Newer Samsung devices have duration file only
