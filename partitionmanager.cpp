@@ -106,9 +106,6 @@ extern "C" {
 	#endif
 #endif
 #endif
-#ifdef TW_CRYPTO_USE_SYSTEM_VOLD
-#include "crypto/vold_decrypt/vold_decrypt.h"
-#endif
 #endif
 
 #ifdef AB_OTA_UPDATER
@@ -396,8 +393,8 @@ void TWPartitionManager::Setup_Fstab_Partitions(bool Display_Error) {
 			else
 				(*iter)->Has_Android_Secure = false;
 
-			if ((*iter)->Is_Super)
-				Prepare_Super_Volume((*iter));
+			if ((*iter)->Is_Super && !Prepare_Super_Volume(*iter))
+				Partitions.erase(iter--);
 		}
 
 		Unlock_Block_Partitions();
@@ -589,9 +586,7 @@ void TWPartitionManager::Decrypt_Data() {
 }
 
 void TWPartitionManager::Setup_Settings_Storage_Partition(TWPartition* Part) {
-	DataManager::SetValue("tw_settings_path", Part->Storage_Path);
 	DataManager::SetValue("tw_storage_path", Part->Storage_Path);
-	LOGINFO("Settings storage is '%s'\n", Part->Storage_Path.c_str());
 }
 
 void TWPartitionManager::Setup_Android_Secure_Location(TWPartition* Part) {
@@ -1937,7 +1932,7 @@ void TWPartitionManager::Post_Decrypt(const string& Block_Device) {
 		}
 		dat->Symlink_Path = dat->Storage_Path;
 		DataManager::SetValue("tw_storage_path", dat->Symlink_Path);
-		DataManager::SetValue("tw_settings_path", dat->Symlink_Path);
+		DataManager::SetValue("tw_settings_path", TW_STORAGE_PATH);
 		LOGINFO("New storage path after decryption: %s\n", dat->Storage_Path.c_str());
 
 		DataManager::LoadTWRPFolderInfo();
@@ -2142,22 +2137,6 @@ int TWPartitionManager::Decrypt_Device(string Password, int user_id) {
 		else
 			pwret = WEXITSTATUS(status) ? -1 : 0;
 	}
-
-#ifdef TW_CRYPTO_USE_SYSTEM_VOLD
-	if (pwret != 0) {
-		pwret = vold_decrypt(Password);
-		switch (pwret) {
-			case VD_SUCCESS:
-				break;
-			case VD_ERR_MISSING_VDC:
-				gui_msg(Msg(msg::kError, "decrypt_data_vold_os_missing=Missing files needed for vold decrypt: {1}")("/system/bin/vdc"));
-				break;
-			case VD_ERR_MISSING_VOLD:
-				gui_msg(Msg(msg::kError, "decrypt_data_vold_os_missing=Missing files needed for vold decrypt: {1}")("/system/bin/vold"));
-				break;
-		}
-	}
-#endif // TW_CRYPTO_USE_SYSTEM_VOLD
 
 	// Unmount any partitions that were needed for decrypt
 	for (iter = Partitions.begin(); iter != Partitions.end(); iter++) {
@@ -3541,6 +3520,7 @@ bool TWPartitionManager::Prepare_Super_Volume(TWPartition* twrpPart) {
 	if (access(("/dev/block/bootdevice/by-name/" + bare_partition_name).c_str(), F_OK) == -1) {
 		LOGINFO("Symlinking %s => /dev/block/bootdevice/by-name/%s \n", fstabEntry.blk_device.c_str(), bare_partition_name.c_str());
 		symlink(fstabEntry.blk_device.c_str(), ("/dev/block/bootdevice/by-name/" + bare_partition_name).c_str());
+		property_set("twrp.super.symlinks_created", "true");
 	}
 
     return true;
@@ -3554,6 +3534,7 @@ bool TWPartitionManager::Prepare_All_Super_Volumes() {
 		if ((*iter)->Is_Super) {
 			if (!Prepare_Super_Volume(*iter)) {
 				status = false;
+				Partitions.erase(iter--);
 			}
 			PartitionManager.Output_Partition(*iter);
 		}

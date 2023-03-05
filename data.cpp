@@ -773,6 +773,11 @@ void DataManager::SetDefaultValues()
 	mPersist.SetValue(TW_AUTO_REFLASHTWRP_VAR, "0");
 	mPersist.SetValue(TW_PREVENT_AUTO_INSTALL_STOCK_REC_VAR, "1");
 	mPersist.SetValue(TW_AUTO_DISABLE_AVB2_VAR, "0");
+#ifdef TW_NO_FLASH_CURRENT_TWRP
+	mConst.SetValue("tw_no_flash_current_twrp", "1");
+#else
+	mConst.SetValue("tw_no_flash_current_twrp", "0");
+#endif
 
 	mData.SetValue(TW_ACTION_BUSY, "0");
 	mData.SetValue("tw_wipe_cache", "0");
@@ -1195,7 +1200,6 @@ void DataManager::Vibrate(const string& varName)
 
 void DataManager::LoadTWRPFolderInfo(void)
 {
-	string mainPath = GetCurrentStoragePath();
 	SetValue(TW_RECOVERY_FOLDER_VAR, TWFunc::Check_For_TwrpFolder());
-	mBackingFile = mainPath + GetStrValue(TW_RECOVERY_FOLDER_VAR) + '/' + TW_SETTINGS_FILE;
+	mBackingFile = GetSettingsStoragePath() + GetStrValue(TW_RECOVERY_NAME) + '/' + TW_SETTINGS_FILE;
 }
